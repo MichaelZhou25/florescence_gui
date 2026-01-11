@@ -3,10 +3,10 @@
 荧光显示仪 · 试纸条C/T峰值识别版
 功能：
 1. 串口读取荧光强度数据并绘制实时曲线
-2. 自动识别C/T双峰值（抗噪声、筛选相隔较远峰值）
+2. 为C/T峰分别配置独立横坐标检测范围，仅在指定区间识别对应峰值
 3. 显示C峰值、T峰值及T/C比值
 4. 阈值报警、数据导出/自动保存
-5. 跨平台兼容（Windows/macOS/Linux），修复字体警告和中文显示问题
+5. 跨平台兼容，保留原有所有绘图功能（无额外范围标记）
 """
 import sys, re, os, time, csv, platform
 from typing import Optional, Deque, Tuple, List
@@ -194,7 +194,7 @@ class SerialWorker(QThread):
 
 
 # ---------------------------
-# Matplotlib绘图画布（含峰值标注）
+# Matplotlib绘图画布（保留原有所有绘图功能，无额外范围标记）
 # ---------------------------
 class NeonCanvas(FigureCanvas):
     def __init__(self):
@@ -208,7 +208,7 @@ class NeonCanvas(FigureCanvas):
             spine.set_color("cyan")
         self.ax.grid(True, color="#244061", alpha=0.3)
 
-        # 绘图元素：主曲线、阈值线、峰值标记
+        # 绘图元素：主曲线、阈值线、峰值标记（保留原有，无新增）
         self.line, = self.ax.plot([], [], lw=2, color="cyan")  # 实时曲线
         self.th_line = self.ax.axhline(np.nan, lw=1.5, color="#66ff66", alpha=0.9)  # 阈值线
         self.c_peak_dot, = self.ax.plot([], [], 'o', color="#00ff00", markersize=8, label='C line')  # C峰标记
@@ -225,18 +225,18 @@ class NeonCanvas(FigureCanvas):
         fig.tight_layout()
 
     def set_threshold(self, th: Optional[float]):
-        """设置阈值线"""
+        """设置阈值线（原有功能）"""
         if th is None:
             self.th_line.set_ydata([np.nan, np.nan])
         else:
             self.th_line.set_ydata([th, th])
 
     def set_alarm_color(self, alarming: bool):
-        """设置曲线报警颜色"""
+        """设置曲线报警颜色（原有功能）"""
         self.line.set_color("red" if alarming else "cyan")
 
     def set_peak_markers(self, c_peak: Tuple[float, float] = None, t_peak: Tuple[float, float] = None):
-        """设置峰值标记位置"""
+        """设置峰值标记位置（原有功能）"""
         if c_peak:
             self.c_peak_dot.set_data([c_peak[0]], [c_peak[1]])
         else:
@@ -248,7 +248,7 @@ class NeonCanvas(FigureCanvas):
             self.t_peak_dot.set_data([], [])
 
     def set_data(self, x: np.ndarray, y: np.ndarray):
-        """更新曲线数据"""
+        """更新曲线数据（原有功能，无修改）"""
         self.line.set_data(x, y)
         if x.size > 1:
             self.ax.set_xlim(max(0, x.min()), x.max())
@@ -258,97 +258,115 @@ class NeonCanvas(FigureCanvas):
         self.draw_idle()
 
 
-# C/T峰值识别算法
-
-def detect_ct_peaks(y_data: np.ndarray, x_data: np.ndarray,
-                    min_peak_height: float = 0.0,
-                    min_peak_distance: int = 50) -> Tuple[Optional[Tuple[float, float]], Optional[Tuple[float, float]]]:
+# C/T峰值识别算法（新增C/T独立范围过滤，无绘图修改）
+def detect_ct_peaks(
+    y_data: np.ndarray, 
+    x_data: np.ndarray,
+    min_peak_height: float = 0.0,
+    min_peak_distance: int = 50,
+    c_x_min: float = 0.0,    # C峰检测最小横坐标
+    c_x_max: float = 200.0,  # C峰检测最大横坐标
+    t_x_min: float = 200.0,  # T峰检测最小横坐标
+    t_x_max: float = 400.0   # T峰检测最大横坐标
+) -> Tuple[Optional[Tuple[float, float]], Optional[Tuple[float, float]]]:
     """
-    识别试纸条C/T双峰值（C在前，T在后）
+    识别指定横坐标范围内的C/T双峰值（仅在各自范围识别）
     :param y_data: 荧光强度数值数组
     :param x_data: 横坐标数组
     :param min_peak_height: 最小峰值高度（过滤噪声峰）
     :param min_peak_distance: 峰值最小间隔（确保C/T峰相隔较远）
+    :param c_x_min/c_x_max: C峰横坐标检测范围
+    :param t_x_min/t_x_max: T峰横坐标检测范围
     :return: (C峰(x,y), T峰(x,y))，无符合条件峰值返回(None, None)
     """
     # 数据量不足时不识别
     if len(y_data) < 10:
         return None, None
 
-    # 步骤1：滑动平均平滑去噪（减少噪声干扰）
+    # 步骤1：滑动平均平滑去噪（原有逻辑）
     smoothed_y = y_data
     if len(y_data) >= 7:
         kernel = np.ones(7) / 7
         smoothed_y = np.convolve(y_data, kernel, mode="same")
 
-    # 步骤2：检测局部极大值（当前点比前后5个点都大）
+    # 步骤2：检测全局局部极大值（原有逻辑）
     peak_indices = argrelextrema(smoothed_y, np.greater, order=20)[0]
     if len(peak_indices) < 2:  # 峰值数量不足2个
         return None, None
 
-    # 步骤3：筛选高度达标的峰值
+    # 步骤3：筛选高度达标的峰值（原有逻辑）
     peaks = [(x_data[i], smoothed_y[i]) for i in peak_indices if smoothed_y[i] >= min_peak_height]
     if len(peaks) < 2:
         return None, None
 
-    # 步骤4：按横坐标排序，筛选相隔足够远的两个峰值（C在前，T在后）
-    peaks_sorted = sorted(peaks, key=lambda p: p[0])
-    c_peak = None
-    t_peak = None
+    # 新增：按C/T各自范围过滤峰值
+    # 筛选C峰范围内的峰值（取最高的那个）
+    c_peaks = [p for p in peaks if c_x_min <= p[0] <= c_x_max]
+    # 筛选T峰范围内的峰值（取最高的那个）
+    t_peaks = [p for p in peaks if t_x_min <= p[0] <= t_x_max]
+    
+    # 必须同时有C/T峰且间隔足够才返回
+    if len(c_peaks) == 0 or len(t_peaks) == 0:
+        return None, None
+    
+    c_peak = max(c_peaks, key=lambda p: p[1])
+    t_peak = max(t_peaks, key=lambda p: p[1])
 
-    for i in range(len(peaks_sorted) - 1):
-        p1 = peaks_sorted[i]
-        p2 = peaks_sorted[i + 1]
-        if abs(p2[0] - p1[0]) >= min_peak_distance:
-            c_peak = p1
-            t_peak = p2
-            break
+    # 步骤4：验证峰值间隔（原有逻辑）
+    if abs(t_peak[0] - c_peak[0]) < min_peak_distance:
+        return None, None
 
     return c_peak, t_peak
 
 
 # ---------------------------
-# 主窗口（GUI）
+# 主窗口（GUI）- 新增C/T范围配置，移除横坐标阈值，保留原有绘图
 # ---------------------------
 class MainWindow(QtWidgets.QMainWindow):
     def __init__(self):
         super().__init__()
-        self.setWindowTitle("荧光显示仪（C/T峰值版）")
-        self.resize(1400, 700)  # 加宽窗口适配峰值显示
+        self.setWindowTitle("荧光显示仪（C/T峰值版）- 独立范围配置")
+        self.resize(1400, 700)  # 加宽窗口适配范围配置
 
-        # 数据存储
+        # 数据存储（原有）
         self.N = 5000  # 最大缓存数据量
         self.y: Deque[float] = deque(maxlen=self.N)  # 荧光强度值
         self.t: Deque[float] = deque(maxlen=self.N)  # 时间戳
         self.raw_last: str = ""  # 最后一条原始数据
 
-        # 串口线程
+        # 串口线程（原有）
         self.worker: Optional[SerialWorker] = None
 
-        # 报警相关
+        # 报警相关（原有）
         self.alarming = False
         self._blink_state = False
 
-        # 自动保存相关
+        # 自动保存相关（原有）
         self.auto_dir = ""
         self._current_bucket = ""  # 自动保存文件分桶（按分钟）
         self._auto_fp = None
 
-        # 峰值识别参数
-        self.min_peak_height = 0.0  # 最小峰值高度
-        self.min_peak_distance = 50  # 峰值最小间隔
-        self.c_peak_value = None  # C峰值数值
-        self.t_peak_value = None  # T峰值数值
-        self.ratio_tc = None  # T/C比值
+        # 峰值识别参数（新增C/T范围，移除横坐标阈值）
+        self.min_peak_height = 0.0  # 最小峰值高度（原有）
+        self.min_peak_distance = 50  # 峰值最小间隔（原有）
+        # 新增：C/T独立检测范围（默认值）
+        self.c_x_min = 0.0
+        self.c_x_max = 200.0
+        self.t_x_min = 200.0
+        self.t_x_max = 400.0
+        # 峰值结果（原有）
+        self.c_peak_value = None
+        self.t_peak_value = None
+        self.ratio_tc = None
 
         # ---------------------------
-        # UI布局
+        # UI布局（新增C/T范围配置，移除横坐标阈值组件）
         # ---------------------------
         central = QtWidgets.QWidget()
         self.setCentralWidget(central)
         root = QtWidgets.QVBoxLayout(central)
 
-        # 1. 顶部控制区（串口配置 + 绘图参数）
+        # 1. 顶部控制区（原有，无修改）
         top_layout = QtWidgets.QHBoxLayout()
 
         # 串口选择
@@ -398,7 +416,7 @@ class MainWindow(QtWidgets.QMainWindow):
         top_layout.addWidget(self.clearBtn)
         root.addLayout(top_layout)
 
-        # 2. 报警/保存区
+        # 2. 报警/保存区（原有，无修改）
         mid_layout = QtWidgets.QHBoxLayout()
 
         # 阈值报警配置
@@ -432,28 +450,66 @@ class MainWindow(QtWidgets.QMainWindow):
         mid_layout.addWidget(self.dirLab)
         root.addLayout(mid_layout)
 
-        # 3. 峰值识别参数区
-        peak_param_layout = QtWidgets.QHBoxLayout()
-        peak_param_layout.addWidget(QtWidgets.QLabel("峰值识别参数："))
-
+        # 3. 峰值识别参数区（新增C/T范围配置，移除横坐标阈值）
+        peak_param_layout = QtWidgets.QGridLayout()  # 改用网格布局适配多参数
+        peak_param_layout.setColumnStretch(10, 1)  # 最后一列拉伸
+        
+        # 原有参数：最小高度、最小间隔
+        peak_param_layout.addWidget(QtWidgets.QLabel("基础识别参数："), 0, 0, 1, 4)
+        peak_param_layout.addWidget(QtWidgets.QLabel("最小高度:"), 1, 0)
         self.peakHeightSpin = QtWidgets.QDoubleSpinBox()
         self.peakHeightSpin.setRange(0, 1e6)
         self.peakHeightSpin.setDecimals(1)
         self.peakHeightSpin.setValue(50.0)
         self.peakHeightSpin.setToolTip("最小峰值高度（过滤噪声峰）")
-        peak_param_layout.addWidget(QtWidgets.QLabel("最小高度:"))
-        peak_param_layout.addWidget(self.peakHeightSpin)
+        peak_param_layout.addWidget(self.peakHeightSpin, 1, 1)
 
+        peak_param_layout.addWidget(QtWidgets.QLabel("最小间隔:"), 1, 2)
         self.peakDistanceSpin = QtWidgets.QSpinBox()
         self.peakDistanceSpin.setRange(10, 500)
         self.peakDistanceSpin.setValue(50)
         self.peakDistanceSpin.setToolTip("峰值最小间隔（确保C/T峰相隔较远）")
-        peak_param_layout.addWidget(QtWidgets.QLabel("最小间隔:"))
-        peak_param_layout.addWidget(self.peakDistanceSpin)
-        peak_param_layout.addStretch(1)
+        peak_param_layout.addWidget(self.peakDistanceSpin, 1, 3)
+
+        # 新增：C峰检测范围
+        peak_param_layout.addWidget(QtWidgets.QLabel("C峰检测范围（横坐标）："), 0, 4, 1, 4)
+        peak_param_layout.addWidget(QtWidgets.QLabel("最小值:"), 1, 4)
+        self.cXMinSpin = QtWidgets.QDoubleSpinBox()
+        self.cXMinSpin.setRange(0, 10000)
+        self.cXMinSpin.setDecimals(0)
+        self.cXMinSpin.setValue(self.c_x_min)
+        self.cXMinSpin.setToolTip("C峰识别的最小横坐标")
+        peak_param_layout.addWidget(self.cXMinSpin, 1, 5)
+
+        peak_param_layout.addWidget(QtWidgets.QLabel("最大值:"), 1, 6)
+        self.cXMaxSpin = QtWidgets.QDoubleSpinBox()
+        self.cXMaxSpin.setRange(0, 10000)
+        self.cXMaxSpin.setDecimals(0)
+        self.cXMaxSpin.setValue(self.c_x_max)
+        self.cXMaxSpin.setToolTip("C峰识别的最大横坐标")
+        peak_param_layout.addWidget(self.cXMaxSpin, 1, 7)
+
+        # 新增：T峰检测范围
+        peak_param_layout.addWidget(QtWidgets.QLabel("T峰检测范围（横坐标）："), 0, 8, 1, 4)
+        peak_param_layout.addWidget(QtWidgets.QLabel("最小值:"), 1, 8)
+        self.tXMinSpin = QtWidgets.QDoubleSpinBox()
+        self.tXMinSpin.setRange(0, 10000)
+        self.tXMinSpin.setDecimals(0)
+        self.tXMinSpin.setValue(self.t_x_min)
+        self.tXMinSpin.setToolTip("T峰识别的最小横坐标")
+        peak_param_layout.addWidget(self.tXMinSpin, 1, 9)
+
+        peak_param_layout.addWidget(QtWidgets.QLabel("最大值:"), 1, 10)
+        self.tXMaxSpin = QtWidgets.QDoubleSpinBox()
+        self.tXMaxSpin.setRange(0, 10000)
+        self.tXMaxSpin.setDecimals(0)
+        self.tXMaxSpin.setValue(self.t_x_max)
+        self.tXMaxSpin.setToolTip("T峰识别的最大横坐标")
+        peak_param_layout.addWidget(self.tXMaxSpin, 1, 11)
+
         root.addLayout(peak_param_layout)
 
-        # 4. 主显示区（日志 + 曲线）
+        # 4. 主显示区（日志 + 曲线）（原有，无修改）
         main_layout = QtWidgets.QHBoxLayout()
         root.addLayout(main_layout, 1)
 
@@ -467,11 +523,11 @@ class MainWindow(QtWidgets.QMainWindow):
         )
         main_layout.addWidget(self.textBox, 2)
 
-        # 右侧：绘图画布
+        # 右侧：绘图画布（原有，无修改）
         self.canvas = NeonCanvas()
         main_layout.addWidget(self.canvas, 5)
 
-        # 5. 底部：数值显示区（最新值 + 峰值）
+        # 5. 底部：数值显示区（最新值 + 峰值）（原有，无修改）
         bottom_layout = QtWidgets.QHBoxLayout()
 
         # 最新值显示
@@ -512,33 +568,38 @@ class MainWindow(QtWidgets.QMainWindow):
         bottom_layout.addStretch(1)
         root.addLayout(bottom_layout)
 
-        # 状态栏
+        # 状态栏（原有，无横坐标阈值显示）
         self.statusBar().showMessage("未连接")
 
         # ---------------------------
-        # 信号与槽绑定
+        # 信号与槽绑定（新增C/T范围参数绑定）
         # ---------------------------
-        # 控制按钮
+        # 控制按钮（原有）
         self.startBtn.clicked.connect(self.start_read)
         self.stopBtn.clicked.connect(self.stop_read)
         self.clearBtn.clicked.connect(self.clear_all)
 
-        # 数据导出/目录选择
+        # 数据导出/目录选择（原有）
         self.exportBtn.clicked.connect(self.export_csv)
         self.pickDirBtn.clicked.connect(self.pick_dir)
 
-        # 阈值报警
+        # 阈值报警（原有）
         self.thSpin.valueChanged.connect(self.on_threshold_changed)
         self.alarmEnableChk.toggled.connect(self.on_threshold_changed)
 
-        # 绘图参数
+        # 绘图参数（原有）
         self.fpsCB.currentTextChanged.connect(self.apply_fps)
 
-        # 峰值参数
+        # 峰值参数（原有+新增C/T范围）
         self.peakHeightSpin.valueChanged.connect(self.update_peak_params)
         self.peakDistanceSpin.valueChanged.connect(self.update_peak_params)
+        # 新增：C/T范围参数绑定
+        self.cXMinSpin.valueChanged.connect(self.update_ct_range_params)
+        self.cXMaxSpin.valueChanged.connect(self.update_ct_range_params)
+        self.tXMinSpin.valueChanged.connect(self.update_ct_range_params)
+        self.tXMaxSpin.valueChanged.connect(self.update_ct_range_params)
 
-        # 定时器
+        # 定时器（原有）
         self.timer = QtCore.QTimer(self)  # 绘图定时器
         self.apply_fps(self.fpsCB.currentText())
         self.timer.timeout.connect(self.redraw)
@@ -556,17 +617,25 @@ class MainWindow(QtWidgets.QMainWindow):
         self._set_running(False)
         self.on_threshold_changed()
         self.update_peak_params()
+        self.update_ct_range_params()  # 初始化C/T范围参数
 
     # ---------------------------
-    # 峰值参数更新
+    # 峰值参数更新（新增C/T范围更新）
     # ---------------------------
     def update_peak_params(self):
-        """更新峰值识别参数"""
+        """更新原有峰值识别参数"""
         self.min_peak_height = self.peakHeightSpin.value()
         self.min_peak_distance = self.peakDistanceSpin.value()
 
+    def update_ct_range_params(self):
+        """更新C/T峰检测范围参数"""
+        self.c_x_min = self.cXMinSpin.value()
+        self.c_x_max = self.cXMaxSpin.value()
+        self.t_x_min = self.tXMinSpin.value()
+        self.t_x_max = self.tXMaxSpin.value()
+
     # ---------------------------
-    # 串口相关
+    # 串口相关（原有，无修改）
     # ---------------------------
     def _set_running(self, running: bool):
         """设置运行状态（启用/禁用按钮）"""
@@ -596,7 +665,7 @@ class MainWindow(QtWidgets.QMainWindow):
         self.portCB.blockSignals(False)
 
     # ---------------------------
-    # 阈值报警
+    # 阈值报警（原有，无修改）
     # ---------------------------
     def on_threshold_changed(self):
         """更新阈值线"""
@@ -636,7 +705,7 @@ class MainWindow(QtWidgets.QMainWindow):
             self.latestLab.setStyleSheet("")
 
     # ---------------------------
-    # 绘图帧率
+    # 绘图帧率（原有，无修改）
     # ---------------------------
     def apply_fps(self, fps_text: str):
         """应用绘图帧率"""
@@ -648,7 +717,7 @@ class MainWindow(QtWidgets.QMainWindow):
         self.timer.setInterval(int(1000 / fps))
 
     # ---------------------------
-    # 自动保存
+    # 自动保存（原有，无修改）
     # ---------------------------
     def pick_dir(self):
         """选择自动保存目录"""
@@ -704,7 +773,7 @@ class MainWindow(QtWidgets.QMainWindow):
             self._auto_open_for_bucket(bucket)
 
     # ---------------------------
-    # 开始/停止/清空
+    # 开始/停止/清空（原有，无修改）
     # ---------------------------
     def start_read(self):
         """开始读取串口数据"""
@@ -797,7 +866,7 @@ class MainWindow(QtWidgets.QMainWindow):
         self.statusBar().showMessage("已清空")
 
     # ---------------------------
-    # 数据处理
+    # 数据处理（原有，无修改）
     # ---------------------------
     @QtCore.Slot(float, str)
     def on_value(self, v: float, raw: str):
@@ -841,19 +910,19 @@ class MainWindow(QtWidgets.QMainWindow):
         self.stop_read()
 
     # ---------------------------
-    # 绘图 + 峰值识别
+    # 绘图 + 峰值识别（传入C/T范围参数，无绘图修改）
     # ---------------------------
     @QtCore.Slot()
     def redraw(self):
-        """重绘曲线并识别峰值"""
+        """重绘曲线并识别峰值（仅逻辑过滤，无绘图修改）"""
         if not self.y:
             return
 
-        # 转换为numpy数组
+        # 转换为numpy数组（原有）
         y = np.fromiter(self.y, dtype=float)
         x = np.arange(y.size)
 
-        # 大数据降采样（提升绘图性能）
+        # 大数据降采样（原有）
         max_plot = 2000
         if y.size > max_plot:
             stride = int(np.ceil(y.size / max_plot))
@@ -863,20 +932,24 @@ class MainWindow(QtWidgets.QMainWindow):
             y_plot = y
             x_plot = x
 
-        # 平滑显示
+        # 平滑显示（原有）
         if self.smoothChk.isChecked() and y_plot.size >= 5:
             k = 5
             kernel = np.ones(k) / k
             y_plot = np.convolve(y_plot, kernel, mode="same")
 
-        # 峰值识别（使用原始数据保证准确性）
+        # 峰值识别（传入C/T范围参数）
         c_peak, t_peak = detect_ct_peaks(
             y, x,
             min_peak_height=self.min_peak_height,
-            min_peak_distance=self.min_peak_distance
+            min_peak_distance=self.min_peak_distance,
+            c_x_min=self.c_x_min,
+            c_x_max=self.c_x_max,
+            t_x_min=self.t_x_min,
+            t_x_max=self.t_x_max
         )
 
-        # 更新峰值显示
+        # 更新峰值显示（原有）
         if c_peak:
             self.c_peak_value = c_peak[1]
             self.cPeakLab.setText(f"{self.c_peak_value:.1f}")
@@ -891,7 +964,7 @@ class MainWindow(QtWidgets.QMainWindow):
             self.t_peak_value = None
             self.tPeakLab.setText("—")
 
-        # 计算T/C比值（避免除零错误）
+        # 计算T/C比值（原有）
         if self.c_peak_value and self.t_peak_value and self.c_peak_value > 0:
             self.ratio_tc = self.t_peak_value / self.c_peak_value
             self.ratioLab.setText(f"{self.ratio_tc:.3f}")
@@ -899,21 +972,21 @@ class MainWindow(QtWidgets.QMainWindow):
             self.ratio_tc = None
             self.ratioLab.setText("—")
 
-        # 更新曲线和峰值标记
+        # 更新曲线和峰值标记（原有，无范围绘图）
         self.canvas.set_data(x_plot, y_plot)
         self.canvas.set_peak_markers(c_peak, t_peak)
         self.canvas.draw_idle()
 
     # ---------------------------
-    # 数据导出
+    # 数据导出（新增C/T范围记录，无绘图修改）
     # ---------------------------
     def export_csv(self):
-        """导出数据为CSV（含峰值汇总）"""
+        """导出数据为CSV（含C/T范围参数）"""
         if not self.y:
             QtWidgets.QMessageBox.information(self, "导出", "当前没有数据可导出。")
             return
 
-        # 选择保存路径
+        # 选择保存路径（原有）
         path, _ = QtWidgets.QFileDialog.getSaveFileName(
             self,
             "导出为 CSV",
@@ -926,25 +999,31 @@ class MainWindow(QtWidgets.QMainWindow):
         try:
             with open(path, "w", newline="", encoding="utf-8") as f:
                 w = csv.writer(f)
-                # 写入表头
+                # 写入表头（原有）
                 w.writerow(["timestamp_iso", "unix_time", "value", "raw"])
-                # 写入原始数据
+                # 写入原始数据（原有）
                 for ts, val in zip(self.t, self.y):
                     ts_iso = datetime.fromtimestamp(ts).isoformat(timespec="milliseconds")
                     w.writerow([ts_iso, f"{ts:.3f}", val, self.raw_last])
-                # 写入峰值汇总
+                # 写入峰值汇总（新增C/T范围）
                 w.writerow([])
                 w.writerow(["C&T peaks", "", "", ""])
                 w.writerow(["C peak", self.c_peak_value if self.c_peak_value else "未识别", "", ""])
                 w.writerow(["T peak", self.t_peak_value if self.t_peak_value else "未识别", "", ""])
                 w.writerow(["T/C ratio", self.ratio_tc if self.ratio_tc else "未识别", "", ""])
+                w.writerow([])
+                w.writerow(["识别参数", "", "", ""])
+                w.writerow(["最小峰值高度", self.min_peak_height, "", ""])
+                w.writerow(["最小峰值间隔", self.min_peak_distance, "", ""])
+                w.writerow(["C峰检测范围", f"{self.c_x_min}-{self.c_x_max}", "", ""])
+                w.writerow(["T峰检测范围", f"{self.t_x_min}-{self.t_x_max}", "", ""])
 
-            QtWidgets.QMessageBox.information(self, "导出", "数据导出完成（含峰值汇总）。")
+            QtWidgets.QMessageBox.information(self, "导出", "数据导出完成（含C/T检测范围参数）。")
         except Exception as e:
             QtWidgets.QMessageBox.warning(self, "导出失败", str(e))
 
     # ---------------------------
-    # 窗口关闭
+    # 窗口关闭（原有，无修改）
     # ---------------------------
     def closeEvent(self, e: QtGui.QCloseEvent):
         """窗口关闭事件"""
@@ -953,7 +1032,7 @@ class MainWindow(QtWidgets.QMainWindow):
 
 
 # ---------------------------
-# 程序入口
+# 程序入口（原有，无修改）
 # ---------------------------
 if __name__ == "__main__":
     app = QtWidgets.QApplication(sys.argv)

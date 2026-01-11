@@ -258,17 +258,26 @@ class NeonCanvas(FigureCanvas):
         self.draw_idle()
 
 
+# ---------------------------
 # C/T峰值识别算法
-
+# ---------------------------
 def detect_ct_peaks(y_data: np.ndarray, x_data: np.ndarray,
-                    min_peak_height: float = 0.0,
-                    min_peak_distance: int = 50) -> Tuple[Optional[Tuple[float, float]], Optional[Tuple[float, float]]]:
+                    min_peak_height: float = 5000,
+                    min_peak_distance: int = 100,
+                    c_x_min: float = 0.0,
+                    c_x_max: float = 10000.0,
+                    t_x_min: float = 0.0,
+                    t_x_max: float = 10000.0) -> Tuple[Optional[Tuple[float, float]], Optional[Tuple[float, float]]]:
     """
     识别试纸条C/T双峰值（C在前，T在后）
     :param y_data: 荧光强度数值数组
     :param x_data: 横坐标数组
     :param min_peak_height: 最小峰值高度（过滤噪声峰）
     :param min_peak_distance: 峰值最小间隔（确保C/T峰相隔较远）
+    :param c_x_min: C线最小横坐标
+    :param c_x_max: C线最大横坐标
+    :param t_x_min: T线最小横坐标
+    :param t_x_max: T线最大横坐标
     :return: (C峰(x,y), T峰(x,y))，无符合条件峰值返回(None, None)
     """
     # 数据量不足时不识别
@@ -282,7 +291,7 @@ def detect_ct_peaks(y_data: np.ndarray, x_data: np.ndarray,
         smoothed_y = np.convolve(y_data, kernel, mode="same")
 
     # 步骤2：检测局部极大值（当前点比前后5个点都大）
-    peak_indices = argrelextrema(smoothed_y, np.greater, order=20)[0]
+    peak_indices = argrelextrema(smoothed_y, np.greater, order=5)[0]
     if len(peak_indices) < 2:  # 峰值数量不足2个
         return None, None
 
@@ -296,13 +305,36 @@ def detect_ct_peaks(y_data: np.ndarray, x_data: np.ndarray,
     c_peak = None
     t_peak = None
 
-    for i in range(len(peaks_sorted) - 1):
-        p1 = peaks_sorted[i]
-        p2 = peaks_sorted[i + 1]
-        if abs(p2[0] - p1[0]) >= min_peak_distance:
-            c_peak = p1
-            t_peak = p2
-            break
+    # 先在C线范围内找峰值
+    c_candidates = [p for p in peaks_sorted if c_x_min <= p[0] <= c_x_max]
+    # 在T线范围内找峰值
+    t_candidates = [p for p in peaks_sorted if t_x_min <= p[0] <= t_x_max]
+
+    # 如果在指定范围内找到合适的C和T峰值
+    if c_candidates and t_candidates:
+        # 选择C线范围内最高的峰值
+        c_peak = max(c_candidates, key=lambda p: p[1])
+        # 选择T线范围内最高的峰值
+        t_peak = max(t_candidates, key=lambda p: p[1])
+        # 确保C峰在T峰之前
+        if c_peak[0] >= t_peak[0]:
+            # 如果C峰在T峰之后，尝试找下一个合适的T峰
+            t_candidates_after_c = [p for p in t_candidates if p[0] > c_peak[0]]
+            if t_candidates_after_c:
+                t_peak = max(t_candidates_after_c, key=lambda p: p[1])
+            else:
+                # 如果没有合适的T峰在C峰之后，重置
+                c_peak = None
+                t_peak = None
+    else:
+        # 如果没有在指定范围内找到峰值，使用默认逻辑
+        for i in range(len(peaks_sorted) - 1):
+            p1 = peaks_sorted[i]
+            p2 = peaks_sorted[i + 1]
+            if abs(p2[0] - p1[0]) >= min_peak_distance:
+                c_peak = p1
+                t_peak = p2
+                break
 
     return c_peak, t_peak
 
@@ -335,11 +367,17 @@ class MainWindow(QtWidgets.QMainWindow):
         self._auto_fp = None
 
         # 峰值识别参数
-        self.min_peak_height = 0.0  # 最小峰值高度
-        self.min_peak_distance = 50  # 峰值最小间隔
+        self.min_peak_height = 5000  # 最小峰值高度
+        self.min_peak_distance = 100  # 峰值最小间隔
         self.c_peak_value = None  # C峰值数值
         self.t_peak_value = None  # T峰值数值
         self.ratio_tc = None  # T/C比值
+
+        # C/T线横坐标范围
+        self.c_x_min = 200
+        self.c_x_max = 400
+        self.t_x_min = 400
+        self.t_x_max = 800
 
         # ---------------------------
         # UI布局
@@ -359,7 +397,7 @@ class MainWindow(QtWidgets.QMainWindow):
 
         # 波特率选择
         self.baudCB = QtWidgets.QComboBox()
-        self.baudCB.addItems(["115200", "57600", "38400", "19200", "9600"])
+        self.baudCB.addItems(["9600","19200","38400","57600","115200"])
 
         # 自动重连
         self.reconnectChk = QtWidgets.QCheckBox("自动重连")
@@ -407,7 +445,7 @@ class MainWindow(QtWidgets.QMainWindow):
         self.thSpin = QtWidgets.QDoubleSpinBox()
         self.thSpin.setRange(-1e12, 1e12)
         self.thSpin.setDecimals(3)
-        self.thSpin.setValue(1000.0)
+        self.thSpin.setValue(10000.0)
         self.thSpin.setSingleStep(10.0)
         self.beepChk = QtWidgets.QCheckBox("蜂鸣")
         self.beepChk.setChecked(True)
@@ -453,7 +491,47 @@ class MainWindow(QtWidgets.QMainWindow):
         peak_param_layout.addStretch(1)
         root.addLayout(peak_param_layout)
 
-        # 4. 主显示区（日志 + 曲线）
+        # 4. C/T线横坐标范围设置区
+        range_layout = QtWidgets.QHBoxLayout()
+        range_layout.addWidget(QtWidgets.QLabel("C线范围:"))
+        self.cMinSpin = QtWidgets.QDoubleSpinBox()
+        self.cMinSpin.setRange(0, 10000)
+        self.cMinSpin.setDecimals(1)
+        self.cMinSpin.setValue(200.0)
+        self.cMinSpin.setToolTip("C线最小横坐标")
+        range_layout.addWidget(QtWidgets.QLabel("最小:"))
+        range_layout.addWidget(self.cMinSpin)
+
+        self.cMaxSpin = QtWidgets.QDoubleSpinBox()
+        self.cMaxSpin.setRange(0, 10000)
+        self.cMaxSpin.setDecimals(1)
+        self.cMaxSpin.setValue(400.0)
+        self.cMaxSpin.setToolTip("C线最大横坐标")
+        range_layout.addWidget(QtWidgets.QLabel("最大:"))
+        range_layout.addWidget(self.cMaxSpin)
+
+        range_layout.addSpacing(30)
+        range_layout.addWidget(QtWidgets.QLabel("T线范围:"))
+        self.tMinSpin = QtWidgets.QDoubleSpinBox()
+        self.tMinSpin.setRange(0, 10000)
+        self.tMinSpin.setDecimals(1)
+        self.tMinSpin.setValue(400.0)
+        self.tMinSpin.setToolTip("T线最小横坐标")
+        range_layout.addWidget(QtWidgets.QLabel("最小:"))
+        range_layout.addWidget(self.tMinSpin)
+
+        self.tMaxSpin = QtWidgets.QDoubleSpinBox()
+        self.tMaxSpin.setRange(0, 10000)
+        self.tMaxSpin.setDecimals(1)
+        self.tMaxSpin.setValue(800.0)
+        self.tMaxSpin.setToolTip("T线最大横坐标")
+        range_layout.addWidget(QtWidgets.QLabel("最大:"))
+        range_layout.addWidget(self.tMaxSpin)
+
+        range_layout.addStretch(1)
+        root.addLayout(range_layout)
+
+        # 5. 主显示区（日志 + 曲线）
         main_layout = QtWidgets.QHBoxLayout()
         root.addLayout(main_layout, 1)
 
@@ -471,7 +549,7 @@ class MainWindow(QtWidgets.QMainWindow):
         self.canvas = NeonCanvas()
         main_layout.addWidget(self.canvas, 5)
 
-        # 5. 底部：数值显示区（最新值 + 峰值）
+        # 6. 底部：数值显示区（最新值 + 峰值）
         bottom_layout = QtWidgets.QHBoxLayout()
 
         # 最新值显示
@@ -538,6 +616,12 @@ class MainWindow(QtWidgets.QMainWindow):
         self.peakHeightSpin.valueChanged.connect(self.update_peak_params)
         self.peakDistanceSpin.valueChanged.connect(self.update_peak_params)
 
+        # C/T线范围参数
+        self.cMinSpin.valueChanged.connect(self.update_ct_ranges)
+        self.cMaxSpin.valueChanged.connect(self.update_ct_ranges)
+        self.tMinSpin.valueChanged.connect(self.update_ct_ranges)
+        self.tMaxSpin.valueChanged.connect(self.update_ct_ranges)
+
         # 定时器
         self.timer = QtCore.QTimer(self)  # 绘图定时器
         self.apply_fps(self.fpsCB.currentText())
@@ -556,6 +640,7 @@ class MainWindow(QtWidgets.QMainWindow):
         self._set_running(False)
         self.on_threshold_changed()
         self.update_peak_params()
+        self.update_ct_ranges()
 
     # ---------------------------
     # 峰值参数更新
@@ -564,6 +649,16 @@ class MainWindow(QtWidgets.QMainWindow):
         """更新峰值识别参数"""
         self.min_peak_height = self.peakHeightSpin.value()
         self.min_peak_distance = self.peakDistanceSpin.value()
+
+    # ---------------------------
+    # C/T线范围更新
+    # ---------------------------
+    def update_ct_ranges(self):
+        """更新C/T线横坐标范围"""
+        self.c_x_min = self.cMinSpin.value()
+        self.c_x_max = self.cMaxSpin.value()
+        self.t_x_min = self.tMinSpin.value()
+        self.t_x_max = self.tMaxSpin.value()
 
     # ---------------------------
     # 串口相关
@@ -691,7 +786,7 @@ class MainWindow(QtWidgets.QMainWindow):
                     self._auto_fp.close()
                 except Exception:
                     pass
-                self._auto_fp = None
+            self._auto_fp = None
             self._current_bucket = ""
             return
 
@@ -873,7 +968,11 @@ class MainWindow(QtWidgets.QMainWindow):
         c_peak, t_peak = detect_ct_peaks(
             y, x,
             min_peak_height=self.min_peak_height,
-            min_peak_distance=self.min_peak_distance
+            min_peak_distance=self.min_peak_distance,
+            c_x_min=self.c_x_min,
+            c_x_max=self.c_x_max,
+            t_x_min=self.t_x_min,
+            t_x_max=self.t_x_max
         )
 
         # 更新峰值显示

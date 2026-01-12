@@ -1,0 +1,467 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<ui version="4.0">
+ <class>Form</class>
+ <widget class="QWidget" name="Form">
+  <property name="geometry">
+   <rect><x>0</x><y>0</y><width>1400</width><height>700</height></rect>
+  </property>
+  <property name="windowTitle">
+   <string>荧光显示仪（C/T峰值版）</string>
+  </property>
+  <layout class="QVBoxLayout" name="rootLayout">
+    <item>
+     <layout class="QHBoxLayout" name="topLayout">
+      <item>
+       <widget class="QLabel" name="labelPort">
+        <property name="text">
+         <string>串口:</string>
+        </property>
+       </widget>
+      </item>
+      <item>
+       <widget class="QComboBox" name="portCB">
+        <property name="minimumSize">
+         <size>
+          <width>140</width>
+          <height>0</height>
+         </size>
+        </property>
+       </widget>
+      </item>
+      <item>
+       <widget class="QPushButton" name="refreshBtn">
+        <property name="text">
+         <string>刷新串口</string>
+        </property>
+       </widget>
+      </item>
+      <item>
+       <spacer name="spacerTop1">
+        <property name="orientation">
+         <enum>Qt::Horizontal</enum>
+        </property>
+        <property name="sizeHint" stdset="0">
+         <size>
+          <width>8</width>
+          <height>10</height>
+         </size>
+        </property>
+       </spacer>
+      </item>
+      <item>
+       <widget class="QLabel" name="labelBaud">
+        <property name="text">
+         <string>波特率:</string>
+        </property>
+       </widget>
+      </item>
+      <item>
+       <widget class="QComboBox" name="baudCB">
+        <property name="minimumSize">
+         <size>
+          <width>90</width>
+          <height>0</height>
+         </size>
+        </property>
+        <item>
+         <property name="text"><string>9600</string></property>
+        </item>
+        <item>
+         <property name="text"><string>19200</string></property>
+        </item>
+        <item>
+         <property name="text"><string>38400</string></property>
+        </item>
+        <item>
+         <property name="text"><string>57600</string></property>
+        </item>
+        <item>
+         <property name="text"><string>115200</string></property>
+        </item>
+       </widget>
+      </item>
+      <item>
+       <spacer name="spacerTop2">
+        <property name="orientation"><enum>Qt::Horizontal</enum></property>
+        <property name="sizeHint" stdset="0">
+         <size><width>12</width><height>10</height></size>
+        </property>
+       </spacer>
+      </item>
+      <item>
+       <widget class="QCheckBox" name="reconnectChk">
+        <property name="text"><string>自动重连</string></property>
+        <property name="checked"><bool>true</bool></property>
+       </widget>
+      </item>
+      <item>
+       <spacer name="spacerTop3">
+        <property name="orientation"><enum>Qt::Horizontal</enum></property>
+        <property name="sizeHint" stdset="0">
+         <size><width>12</width><height>10</height></size>
+        </property>
+       </spacer>
+      </item>
+      <item>
+       <widget class="QLabel" name="labelFps">
+        <property name="text"><string>绘图Hz:</string></property>
+       </widget>
+      </item>
+      <item>
+       <widget class="QComboBox" name="fpsCB">
+        <item><property name="text"><string>10</string></property></item>
+        <item><property name="text"><string>20</string></property></item>
+        <item><property name="text"><string>30</string></property></item>
+        <property name="currentText"><string>20</string></property>
+       </widget>
+      </item>
+      <item>
+       <widget class="QCheckBox" name="smoothChk">
+        <property name="text"><string>平滑显示</string></property>
+        <property name="checked"><bool>true</bool></property>
+       </widget>
+      </item>
+      <item>
+       <spacer name="spacerTopStretch">
+        <property name="orientation"><enum>Qt::Horizontal</enum></property>
+        <property name="sizeType"><enum>QSizePolicy::Expanding</enum></property>
+        <property name="sizeHint" stdset="0">
+         <size><width>40</width><height>10</height></size>
+        </property>
+       </spacer>
+      </item>
+      <item>
+       <widget class="QPushButton" name="startBtn">
+        <property name="text"><string>开始</string></property>
+       </widget>
+      </item>
+      <item>
+       <widget class="QPushButton" name="stopBtn">
+        <property name="text"><string>停止</string></property>
+       </widget>
+      </item>
+      <item>
+       <widget class="QPushButton" name="clearBtn">
+        <property name="text"><string>清空</string></property>
+       </widget>
+      </item>
+     </layout>
+    </item>
+
+    <item>
+     <layout class="QHBoxLayout" name="midLayout">
+      <item>
+       <widget class="QCheckBox" name="alarmEnableChk">
+        <property name="text"><string>启用阈值报警</string></property>
+        <property name="checked"><bool>true</bool></property>
+       </widget>
+      </item>
+      <item>
+       <widget class="QLabel" name="labelTh">
+        <property name="text"><string>阈值:</string></property>
+       </widget>
+      </item>
+      <item>
+       <widget class="QDoubleSpinBox" name="thSpin">
+        <property name="minimum"><double>-1000000000000.0</double></property>
+        <property name="maximum"><double>1000000000000.0</double></property>
+        <property name="decimals"><number>3</number></property>
+        <property name="singleStep"><double>10.0</double></property>
+        <property name="value"><double>10000.0</double></property>
+       </widget>
+      </item>
+      <item>
+       <widget class="QCheckBox" name="beepChk">
+        <property name="text"><string>蜂鸣</string></property>
+        <property name="checked"><bool>true</bool></property>
+       </widget>
+      </item>
+      <item>
+       <spacer name="spacerMidStretch">
+        <property name="orientation"><enum>Qt::Horizontal</enum></property>
+        <property name="sizeType"><enum>QSizePolicy::Expanding</enum></property>
+        <property name="sizeHint" stdset="0">
+         <size><width>40</width><height>10</height></size>
+        </property>
+       </spacer>
+      </item>
+      <item>
+       <widget class="QPushButton" name="exportBtn">
+        <property name="text"><string>导出CSV</string></property>
+       </widget>
+      </item>
+      <item>
+       <widget class="QCheckBox" name="autoSaveChk">
+        <property name="text"><string>自动按分钟分文件</string></property>
+        <property name="checked"><bool>false</bool></property>
+       </widget>
+      </item>
+      <item>
+       <widget class="QPushButton" name="pickDirBtn">
+        <property name="text"><string>选择目录</string></property>
+       </widget>
+      </item>
+      <item>
+       <widget class="QLabel" name="dirLab">
+        <property name="text"><string>未选择</string></property>
+        <property name="styleSheet"><string>color: #888;</string></property>
+       </widget>
+      </item>
+     </layout>
+    </item>
+
+    <item>
+     <layout class="QHBoxLayout" name="peakParamLayout">
+      <item>
+       <widget class="QLabel" name="labelPeakParam">
+        <property name="text"><string>峰值识别参数：</string></property>
+       </widget>
+      </item>
+      <item>
+       <widget class="QLabel" name="labelMinHeight">
+        <property name="text"><string>最小高度:</string></property>
+       </widget>
+      </item>
+      <item>
+       <widget class="QDoubleSpinBox" name="peakHeightSpin">
+        <property name="minimum"><double>0.0</double></property>
+        <property name="maximum"><double>1000000.0</double></property>
+        <property name="decimals"><number>1</number></property>
+        <property name="value"><double>50.0</double></property>
+        <property name="toolTip"><string>最小峰值高度（过滤噪声峰）</string></property>
+       </widget>
+      </item>
+      <item>
+       <widget class="QLabel" name="labelMinDist">
+        <property name="text"><string>最小间隔:</string></property>
+       </widget>
+      </item>
+      <item>
+       <widget class="QSpinBox" name="peakDistanceSpin">
+        <property name="minimum"><number>10</number></property>
+        <property name="maximum"><number>500</number></property>
+        <property name="value"><number>50</number></property>
+        <property name="toolTip"><string>峰值最小间隔（确保C/T峰相隔较远）</string></property>
+       </widget>
+      </item>
+      <item>
+       <spacer name="spacerPeakStretch">
+        <property name="orientation"><enum>Qt::Horizontal</enum></property>
+        <property name="sizeType"><enum>QSizePolicy::Expanding</enum></property>
+        <property name="sizeHint" stdset="0">
+         <size><width>40</width><height>10</height></size>
+        </property>
+       </spacer>
+      </item>
+     </layout>
+    </item>
+
+    <item>
+     <layout class="QHBoxLayout" name="rangeLayout">
+      <item>
+       <widget class="QLabel" name="labelCRange">
+        <property name="text"><string>C线范围:</string></property>
+       </widget>
+      </item>
+      <item>
+       <widget class="QLabel" name="labelCMin">
+        <property name="text"><string>最小:</string></property>
+       </widget>
+      </item>
+      <item>
+       <widget class="QDoubleSpinBox" name="cMinSpin">
+        <property name="minimum"><double>0.0</double></property>
+        <property name="maximum"><double>10000.0</double></property>
+        <property name="decimals"><number>1</number></property>
+        <property name="value"><double>200.0</double></property>
+        <property name="toolTip"><string>C线最小横坐标</string></property>
+       </widget>
+      </item>
+      <item>
+       <widget class="QLabel" name="labelCMax">
+        <property name="text"><string>最大:</string></property>
+       </widget>
+      </item>
+      <item>
+       <widget class="QDoubleSpinBox" name="cMaxSpin">
+        <property name="minimum"><double>0.0</double></property>
+        <property name="maximum"><double>10000.0</double></property>
+        <property name="decimals"><number>1</number></property>
+        <property name="value"><double>400.0</double></property>
+        <property name="toolTip"><string>C线最大横坐标</string></property>
+       </widget>
+      </item>
+
+      <item>
+       <spacer name="spacerRangeGap">
+        <property name="orientation"><enum>Qt::Horizontal</enum></property>
+        <property name="sizeHint" stdset="0">
+         <size><width>30</width><height>10</height></size>
+        </property>
+       </spacer>
+      </item>
+
+      <item>
+       <widget class="QLabel" name="labelTRange">
+        <property name="text"><string>T线范围:</string></property>
+       </widget>
+      </item>
+      <item>
+       <widget class="QLabel" name="labelTMin">
+        <property name="text"><string>最小:</string></property>
+       </widget>
+      </item>
+      <item>
+       <widget class="QDoubleSpinBox" name="tMinSpin">
+        <property name="minimum"><double>0.0</double></property>
+        <property name="maximum"><double>10000.0</double></property>
+        <property name="decimals"><number>1</number></property>
+        <property name="value"><double>400.0</double></property>
+        <property name="toolTip"><string>T线最小横坐标</string></property>
+       </widget>
+      </item>
+      <item>
+       <widget class="QLabel" name="labelTMax">
+        <property name="text"><string>最大:</string></property>
+       </widget>
+      </item>
+      <item>
+       <widget class="QDoubleSpinBox" name="tMaxSpin">
+        <property name="minimum"><double>0.0</double></property>
+        <property name="maximum"><double>10000.0</double></property>
+        <property name="decimals"><number>1</number></property>
+        <property name="value"><double>800.0</double></property>
+        <property name="toolTip"><string>T线最大横坐标</string></property>
+       </widget>
+      </item>
+
+      <item>
+       <spacer name="spacerRangeStretch">
+        <property name="orientation"><enum>Qt::Horizontal</enum></property>
+        <property name="sizeType"><enum>QSizePolicy::Expanding</enum></property>
+        <property name="sizeHint" stdset="0">
+         <size><width>40</width><height>10</height></size>
+        </property>
+       </spacer>
+      </item>
+     </layout>
+    </item>
+
+    <item>
+     <layout class="QHBoxLayout" name="mainLayout">
+      <item>
+       <widget class="QPlainTextEdit" name="textBox">
+        <property name="readOnly"><bool>true</bool></property>
+        <property name="maximumBlockCount"><number>2000</number></property>
+        <property name="styleSheet"><string>QPlainTextEdit { background-color: #111; color: #0f0; border: 2px solid #244061; }</string></property>
+       </widget>
+      </item>
+      <item>
+       <widget class="QWidget" name="plotContainer">
+        <layout class="QVBoxLayout" name="plotLayout">
+         <property name="leftMargin"><number>0</number></property>
+         <property name="topMargin"><number>0</number></property>
+         <property name="rightMargin"><number>0</number></property>
+         <property name="bottomMargin"><number>0</number></property>
+        </layout>
+       </widget>
+      </item>
+     </layout>
+    </item>
+
+    <item>
+     <layout class="QHBoxLayout" name="bottomLayout">
+      <item>
+       <layout class="QHBoxLayout" name="latestLayout">
+        <item>
+         <widget class="QLabel" name="labelLatest">
+          <property name="text"><string>最新值:</string></property>
+         </widget>
+        </item>
+        <item>
+         <widget class="QLabel" name="latestLab">
+          <property name="text"><string>—</string></property>
+         </widget>
+        </item>
+        <item>
+         <widget class="QLabel" name="rawLab">
+          <property name="text"><string></string></property>
+          <property name="styleSheet"><string>color:#888;</string></property>
+         </widget>
+        </item>
+       </layout>
+      </item>
+
+      <item>
+       <spacer name="spacerBottomGap">
+        <property name="orientation"><enum>Qt::Horizontal</enum></property>
+        <property name="sizeHint" stdset="0">
+         <size><width>50</width><height>10</height></size>
+        </property>
+       </spacer>
+      </item>
+
+      <item>
+       <layout class="QHBoxLayout" name="peakLayout">
+        <item>
+         <widget class="QLabel" name="labelCPeak">
+          <property name="text"><string>C峰值:</string></property>
+         </widget>
+        </item>
+        <item>
+         <widget class="QLabel" name="cPeakLab">
+          <property name="text"><string>—</string></property>
+          <property name="styleSheet"><string>color: #00ff00;</string></property>
+         </widget>
+        </item>
+        <item>
+         <spacer name="spacerPeakGap1">
+          <property name="orientation"><enum>Qt::Horizontal</enum></property>
+          <property name="sizeHint" stdset="0"><size><width>20</width><height>10</height></size></property>
+         </spacer>
+        </item>
+        <item>
+         <widget class="QLabel" name="labelTPeak">
+          <property name="text"><string>T峰值:</string></property>
+         </widget>
+        </item>
+        <item>
+         <widget class="QLabel" name="tPeakLab">
+          <property name="text"><string>—</string></property>
+          <property name="styleSheet"><string>color: #ffff00;</string></property>
+         </widget>
+        </item>
+        <item>
+         <spacer name="spacerPeakGap2">
+          <property name="orientation"><enum>Qt::Horizontal</enum></property>
+          <property name="sizeHint" stdset="0"><size><width>20</width><height>10</height></size></property>
+         </spacer>
+        </item>
+        <item>
+         <widget class="QLabel" name="labelRatio">
+          <property name="text"><string>T/C比值:</string></property>
+         </widget>
+        </item>
+        <item>
+         <widget class="QLabel" name="ratioLab">
+          <property name="text"><string>—</string></property>
+          <property name="styleSheet"><string>color: #ff6600;</string></property>
+         </widget>
+        </item>
+       </layout>
+      </item>
+
+      <item>
+       <spacer name="spacerBottomStretch">
+        <property name="orientation"><enum>Qt::Horizontal</enum></property>
+        <property name="sizeType"><enum>QSizePolicy::Expanding</enum></property>
+        <property name="sizeHint" stdset="0"><size><width>40</width><height>10</height></size></property>
+       </spacer>
+      </item>
+     </layout>
+    </item>
+   </layout>
+ </widget>
+ <resources/>
+ <connections/>
+</ui>

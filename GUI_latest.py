@@ -924,8 +924,8 @@ class MainWindow(QtWidgets.QMainWindow):
             y_plot = y_raw
             x_plot = x
 
-        if self.smoothChk.isChecked() and y_plot.size >= 5:
-            k = 5
+        if self.smoothChk.isChecked() and y_plot.size >= 7:
+            k = 7
             kernel = np.ones(k) / k
             y_plot = np.convolve(y_plot, kernel, mode="same")
 

@@ -356,6 +356,62 @@
         <property name="styleSheet"><string>QPlainTextEdit { background-color: #111; color: #0f0; border: 2px solid #244061; }</string></property>
        </widget>
       </item>
+
+      <!-- 历史曲线面板：勾选显示/隐藏历史曲线 -->
+      <item>
+       <widget class="QGroupBox" name="historyGroup">
+        <property name="title">
+         <string>历史曲线</string>
+        </property>
+        <property name="minimumSize">
+         <size>
+          <width>260</width>
+          <height>0</height>
+         </size>
+        </property>
+        <property name="styleSheet">
+         <string>QGroupBox { color: #ddd; border: 1px solid #244061; margin-top: 8px; }
+QGroupBox::title { subcontrol-origin: margin; left: 10px; padding: 0 3px; }
+QListWidget { background-color: #111; color: #ddd; border: 1px solid #244061; }
+QPushButton { padding: 3px 8px; }</string>
+        </property>
+        <layout class="QVBoxLayout" name="historyLayout">
+         <item>
+          <widget class="QListWidget" name="historyList">
+           <property name="alternatingRowColors">
+            <bool>true</bool>
+           </property>
+          </widget>
+         </item>
+         <item>
+          <layout class="QHBoxLayout" name="historyBtnLayout">
+           <item>
+            <widget class="QPushButton" name="saveRunBtn">
+             <property name="text">
+              <string>保存当前</string>
+             </property>
+            </widget>
+           </item>
+           <item>
+            <widget class="QPushButton" name="removeRunBtn">
+             <property name="text">
+              <string>删除所选</string>
+             </property>
+            </widget>
+           </item>
+           <item>
+            <widget class="QPushButton" name="clearHistoryBtn">
+             <property name="text">
+              <string>清空</string>
+             </property>
+            </widget>
+           </item>
+          </layout>
+         </item>
+        </layout>
+       </widget>
+      </item>
+
       <item>
        <widget class="QWidget" name="plotContainer">
         <layout class="QVBoxLayout" name="plotLayout">

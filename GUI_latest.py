@@ -890,6 +890,10 @@ class MainWindow(QtWidgets.QMainWindow):
         self.raw_last = ""
         self.canvas.set_data(np.array([]), np.array([]))
 
+        self.canvas.set_peak_markers(None, None)  # 清空C/T峰标记
+        self.canvas.draw_idle()  # 刷新画布使修改生效
+
+
         # 重置显示
         self.latestLab.setText("—")
         self.rawLab.setText("")
